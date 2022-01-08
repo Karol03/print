@@ -5,9 +5,6 @@
 #include <type_traits>
 
 
-namespace print
-{
-
 template <typename T>
 using has_cbegin = decltype(&T::cbegin);
 
@@ -99,13 +96,6 @@ std::string> to_string(const T& value)
     return value.to_string();
 }
 
-template <typename T>
-std::enable_if_t<std::experimental::is_same_v<T, std::string>,
-std::string> str(const T& value)
-{
-    return value;
-}
-
 namespace tostring
 {
 namespace details
@@ -120,6 +110,13 @@ using has_to_string = decltype(to_string(T()));
 }  //  namespace details
 }  //  namespace tostring
 
+
+template <typename T>
+std::enable_if_t<std::experimental::is_same_v<T, std::string>,
+std::string> str(const T& value)
+{
+    return value;
+}
 
 template <typename T>
 std::enable_if_t<
@@ -139,5 +136,3 @@ std::string> str(const T& value)
 {
     return "Class has no const 'to_string' method defined";
 }
-
-} // namespace print
