@@ -81,7 +81,7 @@ std::string> to_string(const T& map)
 template<typename T>
 std::enable_if_t<
     std::experimental::is_detected_v<has_to_string_method, T> &&
-    std::experimental::is_pointer_v<T>,
+    std::is_pointer_v<T>,
 std::string> to_string(const T& value)
 {
     return value->to_string();
@@ -90,10 +90,48 @@ std::string> to_string(const T& value)
 template<typename T>
 std::enable_if_t<
     std::experimental::is_detected_v<has_to_string_method, T> &&
-    !std::experimental::is_pointer_v<T>,
+    !std::is_pointer_v<T>,
 std::string> to_string(const T& value)
 {
     return value.to_string();
+}
+
+template<typename T>
+std::enable_if_t<
+    std::is_array_v<T>,
+std::string> to_string(const T& value)
+{
+    auto result = std::stringstream{};
+    const auto arraySize = std::size(value);
+    result << "[";
+    if (arraySize > 0)
+    {
+        result << value[0];
+        for (auto i = 1u; i < arraySize; ++i)
+        {
+            result << ", " << value[i];
+        }
+    }
+    result << "]";
+    return result.str();
+}
+
+template<typename T>
+std::enable_if_t<
+    std::is_null_pointer_v<T>,
+std::string> to_string(const T&)
+{
+    return "<ptr: nullptr>";
+}
+
+template<typename T>
+std::enable_if_t<
+    std::is_pointer_v<T>,
+std::string> to_string(const T& value)
+{
+    auto result = std::stringstream{};
+    result << "<ptr: " << value << ">\n";
+    return result.str();
 }
 
 namespace tostring
@@ -106,6 +144,10 @@ using namespace std;
 
 template <typename T>
 using has_to_string = decltype(to_string(T()));
+
+template <typename T, typename ArrayType = std::enable_if_t<std::is_array_v<T>, std::decay_t<std::remove_pointer_t<T>>>>
+using has_array_to_string = decltype(to_string<ArrayType[]>);
+
 }  //  namespace impl
 }  //  namespace details
 }  //  namespace tostring
@@ -121,7 +163,8 @@ std::string> str(const T& value)
 template <typename T>
 std::enable_if_t<
     !std::experimental::is_same_v<T, std::string> &&
-    std::experimental::is_detected_v<tostring::details::impl::has_to_string, T>,
+    (std::experimental::is_detected_v<tostring::details::impl::has_to_string, T> ||
+     std::experimental::is_detected_v<tostring::details::impl::has_array_to_string, T>),
 std::string> str(const T& value)
 {
     using namespace std;
@@ -131,7 +174,8 @@ std::string> str(const T& value)
 template <typename T>
 std::enable_if_t<
     !std::experimental::is_same_v<T, std::string> &&
-    !std::experimental::is_detected_v<tostring::details::impl::has_to_string, T>,
+    !std::experimental::is_detected_v<tostring::details::impl::has_to_string, T> &&
+    !std::experimental::is_detected_v<tostring::details::impl::has_array_to_string, T>,
 std::string> str(const T& value)
 {
     return "Class has no const 'to_string' method defined";
